@@ -6,6 +6,20 @@ describe Mongoid::Pagination do
     include Mongoid::Pagination
   end
 
+  describe ".page_size" do
+    class Person_50
+      include Mongoid::Document
+      include Mongoid::Pagination
+
+      default_page_size 50
+    end
+
+    it 'returns configured default page size' do
+      Person.page_size.should == 25
+      Person_50.page_size.should == 50
+    end
+  end
+
   describe ".paginate" do
     let!(:one)   { Person.create! }
     let!(:two)   { Person.create! }
@@ -17,11 +31,11 @@ describe Mongoid::Pagination do
         subject { Person.paginate }
 
         it "does not set the skip param by default" do
-          subject.options[:skip].should be_nil
+          subject.options[:skip].should == 0
         end
 
         it "defaults the limit param to 25" do
-          subject.options[:limit].should be_nil
+          subject.options[:limit].should == 25
         end
 
         it "returns the criteria unmodified if the limit param is not passed in" do
@@ -44,10 +58,22 @@ describe Mongoid::Pagination do
         end
       end
 
-      describe "when passed a limit param but no page" do
+      describe "when passed an offset param but no limit" do
+        subject { Person.paginate(:offset => 0) }
+
+        it "defaults the limit to 25" do
+          subject.options[:limit].should == 25
+        end
+
+        it "sets the offset to 0" do
+          subject.options[:skip].should == 0
+        end
+      end
+
+      describe "when passed a limit param but no page nor offset" do
         subject { Person.paginate(:limit => 100) }
 
-        it "defaults the page to 0" do
+        it "defaults the offset to 0" do
           subject.options[:skip].should == 0
         end
 
@@ -56,34 +82,78 @@ describe Mongoid::Pagination do
         end
       end
 
-      it "sets the skip param to 0 if passed 0" do
-        Person.paginate(:page => 0).options[:skip].should == 0
+      describe "when passed both page and offset, offset is ignored" do
+        subject { Person.paginate(:page => 2, :offset => 1) }
+
+        it "sets the skip to 25" do
+          subject.options[:skip].should == 25
+        end
       end
 
-      it "sets the skip param to 0 if passed a string of 0" do
-        Person.paginate(:page => '0').options[:skip].should == 0
+      context 'with page param' do
+        it "sets the skip param to 0 if passed 0" do
+          Person.paginate(:page => 0).options[:skip].should == 0
+        end
+
+        it "sets the skip param to 0 if passed a string of 0" do
+          Person.paginate(:page => '0').options[:skip].should == 0
+        end
+
+        it "sets the skip param to 0 if the passed a string of 1" do
+          Person.paginate(:page => '1').options[:skip].should == 0
+        end
+
+        it "limits when passed a string param" do
+          Person.paginate(:limit => '1').to_a.size.should == 1
+        end
+
+        it "correctly sets criteria options" do
+          Person.paginate(:limit => 10, :page => 3).options.should == {:limit => 10, :skip => 20}
+        end
       end
 
-      it "sets the skip param to 0 if the passed a string of 1" do
-        Person.paginate(:page => '1').options[:skip].should == 0
-      end
+      context 'with offset param' do
+        it "sets the skip param to 0 if passed 0" do
+          Person.paginate(:offset => 0).options[:skip].should == 0
+        end
 
-      it "limits when passed a string param" do
-        Person.paginate(:limit => '1').to_a.size.should == 1
-      end
+        it "sets the skip param to 0 if passed a string of 0" do
+          Person.paginate(:offset=> '0').options[:skip].should == 0
+        end
 
-      it "correctly sets criteria options" do
-        Person.paginate(:limit => 10, :page => 3).options.should == {:limit => 10, :skip => 20}
+        it "sets the skip param to 1 if the passed a string of 1" do
+          Person.paginate(:offset => '1').options[:skip].should == 1
+        end
+
+        it "sets the skip param with page even if offset is passed as 1" do
+          Person.paginate(:offset => '1', :page => '2').options[:skip].should == 25 
+        end
+
+        it "correctly sets criteria options" do
+          Person.paginate(:limit => 10, :offset => 3).options.should == {:limit => 10, :skip => 3}
+        end
       end
     end
 
     context "results" do
-      it "paginates correctly on the first page" do
-        Person.paginate(:page => 1, :limit => 2).to_a.should == [one, two]
+      context "with page param" do
+        it "paginates correctly on the first page" do
+          Person.paginate(:page => 1, :limit => 2).to_a.should == [one, two]
+        end
+
+        it "paginates correctly on the second page" do
+          Person.paginate(:page => 2, :limit => 2).to_a.should == [three, four]
+        end
       end
 
-      it "paginates correctly on the second page" do
-        Person.paginate(:page => 2, :limit => 2).to_a.should == [three, four]
+      context "with offset param" do
+        it "paginates correctly on the first page" do
+          Person.paginate(:offset => 0, :limit => 2).to_a.should == [one, two]
+        end
+
+        it "paginates correctly on the second page" do
+          Person.paginate(:offset => 2, :limit => 2).to_a.should == [three, four]
+        end
       end
     end
 
