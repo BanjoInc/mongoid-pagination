@@ -1,9 +1,17 @@
 require 'spec_helper'
 
 describe Mongoid::Pagination do
+  class Group
+    include Mongoid::Document
+
+    has_many :persons
+  end
+
   class Person
     include Mongoid::Document
     include Mongoid::Pagination
+
+    belongs_to :group
   end
 
   describe ".page_size" do
@@ -20,34 +28,56 @@ describe Mongoid::Pagination do
     end
   end
 
-  describe ".paginated_collection" do
-    let!(:one)   { Person.create! }
-    let!(:two)   { Person.create! }
+  describe ".paginate" do
+    let!(:group) { Group.create! }
+    let!(:one)   { Person.create!(group: group) }
+    let!(:two)   { Person.create!(group: group) }
 
-    subject { Person.paginate(offset: 0, limit: 2) }
+    context 'without eager loading' do
+      subject { Person.paginate(offset: 0, limit: 2) }
 
-    it 'is an paginated array' do
-      subject.should be_kind_of(Mongoid::Pagination::Collection)
-    end
+      it 'is an paginated array' do
+        subject.should be_kind_of(Mongoid::Pagination::Collection)
+      end
 
-    context 'for less than a page' do
-      it 'returns page size' do
-        subject.size.should == 2
-        Person.has_more_results?.should == false
-        Person.next_offset.should be_nil
-        Person.next_offset_at.should == 2
+      context 'for less than a page' do
+        it 'returns page size' do
+          subject.size.should == 2
+          Person.has_more_results?.should == false
+          Person.next_offset.should be_nil
+          Person.next_offset_at.should == 2
+        end
       end
     end
 
-    context 'for more than a page' do
-      let!(:three) { Person.create! }
-      let!(:four)  { Person.create! }
+    context 'with eager loading' do
+      subject { Person.paginate(offset: 0, limit: 2, eager_load: [ :group ]) }
 
-      it 'overfetched by 1' do
-        subject.size.should == 2
-        Person.has_more_results?.should == true
-        Person.next_offset.should == 2
-        Person.next_offset_at.should == 2
+      it 'is an paginated array' do
+        subject.should be_kind_of(Mongoid::Pagination::Collection)
+      end
+
+      context 'for less than a page' do
+        it 'returns page size' do
+          Group.expects(:any_in).once.returns([group])
+          subject.size.should == 2
+          Person.has_more_results?.should == false
+          Person.next_offset.should be_nil
+          Person.next_offset_at.should == 2
+        end
+      end
+
+      context 'for more than a page' do
+        let!(:three) { Person.create!(group: group) }
+        let!(:four)  { Person.create!(group: group) }
+
+        it 'overfetched by 1' do
+          Group.expects(:any_in).once.returns([group])
+          subject.size.should == 2
+          Person.has_more_results?.should == true
+          Person.next_offset.should == 2
+          Person.next_offset_at.should == 2
+        end
       end
     end
   end
