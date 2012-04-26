@@ -11,12 +11,44 @@ describe Mongoid::Pagination do
       include Mongoid::Document
       include Mongoid::Pagination
 
-      default_page_size 50
+      self.page_size = 50
     end
 
     it 'returns configured default page size' do
       Person.page_size.should == 25
       Person_50.page_size.should == 50
+    end
+  end
+
+  describe ".paginated_collection" do
+    let!(:one)   { Person.create! }
+    let!(:two)   { Person.create! }
+
+    subject { Person.paginated_collection(offset: 0, limit: 2) }
+
+    it 'is an paginated array' do
+      subject.should be_kind_of(Mongoid::Pagination::Collection)
+    end
+
+    context 'for less than a page' do
+      it 'returns page size' do
+        subject.size.should == 2
+        subject.has_more_results.should == false
+        subject.next_offset.should be_nil
+        subject.next_offset_at.should == 2
+      end
+    end
+
+    context 'for more than a page' do
+      let!(:three) { Person.create! }
+      let!(:four)  { Person.create! }
+
+      it 'overfetched by 1' do
+        subject.size.should == 2
+        subject.has_more_results.should == true
+        subject.next_offset.should == 2
+        subject.next_offset_at.should == 2
+      end
     end
   end
 
