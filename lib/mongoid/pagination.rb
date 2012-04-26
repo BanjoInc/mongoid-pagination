@@ -22,27 +22,22 @@ module Mongoid
       # @return [Mongoid::Criteria]
       def paginate(opts = {})
 
-        opts[:limit] = (opts[:limit] || page_size).to_i
-
+        limit = (opts[:limit] || page_size).to_i
         offset = paginate_offset(opts)
-        per_page(opts[:limit]).offset(offset)
-      end
 
-      def paginated_collection(opts = {})
+        criteria = per_page(limit).offset(offset)
 
-        limit = opts[:limit] || page_size
-
-        over_fetched_collection = paginate(opts.merge(limit: limit + 1)).to_a
+        over_fetched_collection = per_page(limit + 1).offset(offset).to_a
         has_more_results = over_fetched_collection.size > limit
 
         over_fetched_collection.pop if has_more_results
 
-        collection = ::Mongoid::Pagination::Collection.new(over_fetched_collection)
-        collection.current_offset = opts[:offset] || 0
-        collection.current_page_size = limit
-        collection.has_more_results = has_more_results
+        @paginated_collection = ::Mongoid::Pagination::Collection.new(over_fetched_collection)
+        @paginated_collection.current_offset = offset
+        @paginated_collection.current_page_size = limit
+        @paginated_collection.has_more_results = has_more_results
 
-        collection
+        criteria
       end
 
       # Limit the result set
@@ -61,38 +56,28 @@ module Mongoid
         end
       end
 
-      def has_more_result?(opts = {})
-        count > next_offset_at(opts)
+      def paginated_collection
+        @paginated_collection
       end
 
-      def next_offset_at(opts = {})
-        paginate_offset(opts) + (opts[:limit] || page_size).to_i
+      def has_more_results?
+        return unless @paginated_collection
+        @paginated_collection.has_more_results
       end
-
-      def next_offset(opts = {})
-        has_more_result?(opts) ? next_offset_at(opts) : nil
-      end
-    end
-
-    module CollectionMethods
 
       def next_offset_at
-        current_offset + current_page_size
+        return unless @paginated_collection
+        @paginated_collection.current_offset + @paginated_collection.current_page_size
       end
 
       def next_offset
-        has_more_results ? next_offset_at : nil
+        return unless @paginated_collection
+        has_more_results? ? next_offset_at : nil
       end
     end
 
     class Collection < Array
-      include CollectionMethods
- 
       attr_accessor :current_offset, :current_page_size, :has_more_results
-
-      def page
-        current_offset / current_page_size + 1
-      end
     end
   end
 end

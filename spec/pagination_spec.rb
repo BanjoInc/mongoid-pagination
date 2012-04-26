@@ -24,16 +24,16 @@ describe Mongoid::Pagination do
     let!(:one)   { Person.create! }
     let!(:two)   { Person.create! }
 
-    subject { Person.paginated_collection(offset: 0, limit: 2) }
+    subject { Person.paginate(offset: 0, limit: 2) }
 
     it 'is an paginated array' do
-      subject.should be_kind_of(Mongoid::Pagination::Collection)
+      subject.paginated_collection.should be_kind_of(Mongoid::Pagination::Collection)
     end
 
     context 'for less than a page' do
       it 'returns page size' do
-        subject.size.should == 2
-        subject.has_more_results.should == false
+        subject.paginated_collection.size.should == 2
+        subject.has_more_results?.should == false
         subject.next_offset.should be_nil
         subject.next_offset_at.should == 2
       end
@@ -44,8 +44,8 @@ describe Mongoid::Pagination do
       let!(:four)  { Person.create! }
 
       it 'overfetched by 1' do
-        subject.size.should == 2
-        subject.has_more_results.should == true
+        subject.paginated_collection.size.should == 2
+        subject.has_more_results?.should == true
         subject.next_offset.should == 2
         subject.next_offset_at.should == 2
       end
