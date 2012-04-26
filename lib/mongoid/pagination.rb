@@ -20,24 +20,30 @@ module Mongoid
       # @option [Integer] :limit (default: 25)
       #
       # @return [Mongoid::Criteria]
-      def paginate(opts = {})
-
+      def paginated_criteria(opts = {})
         limit = (opts[:limit] || page_size).to_i
         offset = paginate_offset(opts)
 
-        criteria = per_page(limit).offset(offset)
+        per_page(limit).offset(offset)
+      end
 
-        over_fetched_collection = per_page(limit + 1).offset(offset).to_a
+      def paginate(opts = {})
+
+        criteria = paginated_criteria(opts)
+        limit = criteria.options[:limit]
+        criteria.options[:limit] += 1
+
+        over_fetched_collection = criteria.to_a
         has_more_results = over_fetched_collection.size > limit
 
         over_fetched_collection.pop if has_more_results
 
         @paginated_collection = ::Mongoid::Pagination::Collection.new(over_fetched_collection)
-        @paginated_collection.current_offset = offset
+        @paginated_collection.current_offset = criteria.options[:skip]
         @paginated_collection.current_page_size = limit
         @paginated_collection.has_more_results = has_more_results
 
-        criteria
+        @paginated_collection
       end
 
       # Limit the result set

@@ -27,15 +27,15 @@ describe Mongoid::Pagination do
     subject { Person.paginate(offset: 0, limit: 2) }
 
     it 'is an paginated array' do
-      subject.paginated_collection.should be_kind_of(Mongoid::Pagination::Collection)
+      subject.should be_kind_of(Mongoid::Pagination::Collection)
     end
 
     context 'for less than a page' do
       it 'returns page size' do
-        subject.paginated_collection.size.should == 2
-        subject.has_more_results?.should == false
-        subject.next_offset.should be_nil
-        subject.next_offset_at.should == 2
+        subject.size.should == 2
+        Person.has_more_results?.should == false
+        Person.next_offset.should be_nil
+        Person.next_offset_at.should == 2
       end
     end
 
@@ -44,15 +44,15 @@ describe Mongoid::Pagination do
       let!(:four)  { Person.create! }
 
       it 'overfetched by 1' do
-        subject.paginated_collection.size.should == 2
-        subject.has_more_results?.should == true
-        subject.next_offset.should == 2
-        subject.next_offset_at.should == 2
+        subject.size.should == 2
+        Person.has_more_results?.should == true
+        Person.next_offset.should == 2
+        Person.next_offset_at.should == 2
       end
     end
   end
 
-  describe ".paginate" do
+  describe ".paginated_criteria" do
     let!(:one)   { Person.create! }
     let!(:two)   { Person.create! }
     let!(:three) { Person.create! }
@@ -60,7 +60,7 @@ describe Mongoid::Pagination do
 
     context "parameter defaults and massaging" do
       describe "when no params are passed in" do
-        subject { Person.paginate }
+        subject { Person.paginated_criteria }
 
         it "does not set the skip param by default" do
           subject.options[:skip].should == 0
@@ -73,13 +73,13 @@ describe Mongoid::Pagination do
         it "returns the criteria unmodified if the limit param is not passed in" do
           criteria = Person.where(:name => 'someone')
           expect {
-            criteria.paginate
+            criteria.paginated_criteria
           }.not_to change { criteria.options }
         end
       end
 
       describe "when passed a page param but no limit" do
-        subject { Person.paginate(:page => 1) }
+        subject { Person.paginated_criteria(:page => 1) }
 
         it "defaults the limit to 25" do
           subject.options[:limit].should == 25
@@ -91,7 +91,7 @@ describe Mongoid::Pagination do
       end
 
       describe "when passed an offset param but no limit" do
-        subject { Person.paginate(:offset => 0) }
+        subject { Person.paginated_criteria(:offset => 0) }
 
         it "defaults the limit to 25" do
           subject.options[:limit].should == 25
@@ -103,7 +103,7 @@ describe Mongoid::Pagination do
       end
 
       describe "when passed a limit param but no page nor offset" do
-        subject { Person.paginate(:limit => 100) }
+        subject { Person.paginated_criteria(:limit => 100) }
 
         it "defaults the offset to 0" do
           subject.options[:skip].should == 0
@@ -115,7 +115,7 @@ describe Mongoid::Pagination do
       end
 
       describe "when passed both page and offset, offset is ignored" do
-        subject { Person.paginate(:page => 2, :offset => 1) }
+        subject { Person.paginated_criteria(:page => 2, :offset => 1) }
 
         it "sets the skip to 25" do
           subject.options[:skip].should == 25
@@ -124,45 +124,45 @@ describe Mongoid::Pagination do
 
       context 'with page param' do
         it "sets the skip param to 0 if passed 0" do
-          Person.paginate(:page => 0).options[:skip].should == 0
+          Person.paginated_criteria(:page => 0).options[:skip].should == 0
         end
 
         it "sets the skip param to 0 if passed a string of 0" do
-          Person.paginate(:page => '0').options[:skip].should == 0
+          Person.paginated_criteria(:page => '0').options[:skip].should == 0
         end
 
         it "sets the skip param to 0 if the passed a string of 1" do
-          Person.paginate(:page => '1').options[:skip].should == 0
+          Person.paginated_criteria(:page => '1').options[:skip].should == 0
         end
 
         it "limits when passed a string param" do
-          Person.paginate(:limit => '1').to_a.size.should == 1
+          Person.paginated_criteria(:limit => '1').to_a.size.should == 1
         end
 
         it "correctly sets criteria options" do
-          Person.paginate(:limit => 10, :page => 3).options.should == {:limit => 10, :skip => 20}
+          Person.paginated_criteria(:limit => 10, :page => 3).options.should == {:limit => 10, :skip => 20}
         end
       end
 
       context 'with offset param' do
         it "sets the skip param to 0 if passed 0" do
-          Person.paginate(:offset => 0).options[:skip].should == 0
+          Person.paginated_criteria(:offset => 0).options[:skip].should == 0
         end
 
         it "sets the skip param to 0 if passed a string of 0" do
-          Person.paginate(:offset=> '0').options[:skip].should == 0
+          Person.paginated_criteria(:offset=> '0').options[:skip].should == 0
         end
 
         it "sets the skip param to 1 if the passed a string of 1" do
-          Person.paginate(:offset => '1').options[:skip].should == 1
+          Person.paginated_criteria(:offset => '1').options[:skip].should == 1
         end
 
         it "sets the skip param with page even if offset is passed as 1" do
-          Person.paginate(:offset => '1', :page => '2').options[:skip].should == 25 
+          Person.paginated_criteria(:offset => '1', :page => '2').options[:skip].should == 25 
         end
 
         it "correctly sets criteria options" do
-          Person.paginate(:limit => 10, :offset => 3).options.should == {:limit => 10, :skip => 3}
+          Person.paginated_criteria(:limit => 10, :offset => 3).options.should == {:limit => 10, :skip => 3}
         end
       end
     end
@@ -170,21 +170,21 @@ describe Mongoid::Pagination do
     context "results" do
       context "with page param" do
         it "paginates correctly on the first page" do
-          Person.paginate(:page => 1, :limit => 2).to_a.should == [one, two]
+          Person.paginated_criteria(:page => 1, :limit => 2).to_a.should == [one, two]
         end
 
         it "paginates correctly on the second page" do
-          Person.paginate(:page => 2, :limit => 2).to_a.should == [three, four]
+          Person.paginated_criteria(:page => 2, :limit => 2).to_a.should == [three, four]
         end
       end
 
       context "with offset param" do
         it "paginates correctly on the first page" do
-          Person.paginate(:offset => 0, :limit => 2).to_a.should == [one, two]
+          Person.paginated_criteria(:offset => 0, :limit => 2).to_a.should == [one, two]
         end
 
         it "paginates correctly on the second page" do
-          Person.paginate(:offset => 2, :limit => 2).to_a.should == [three, four]
+          Person.paginated_criteria(:offset => 2, :limit => 2).to_a.should == [three, four]
         end
       end
     end
@@ -212,3 +212,4 @@ describe Mongoid::Pagination do
     end
   end
 end
+
