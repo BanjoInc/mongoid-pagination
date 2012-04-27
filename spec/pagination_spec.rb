@@ -43,9 +43,9 @@ describe Mongoid::Pagination do
       context 'for less than a page' do
         it 'returns page size' do
           subject.size.should == 2
-          Person.has_more_results?.should == false
-          Person.next_offset.should be_nil
-          Person.next_offset_at.should == 2
+          subject.has_more_results.should == false
+          subject.next_offset.should be_nil
+          subject.next_offset_at.should == 2
         end
       end
     end
@@ -61,9 +61,9 @@ describe Mongoid::Pagination do
         it 'returns page size' do
           Group.expects(:any_in).once.returns([group])
           subject.size.should == 2
-          Person.has_more_results?.should == false
-          Person.next_offset.should be_nil
-          Person.next_offset_at.should == 2
+          subject.has_more_results.should == false
+          subject.next_offset.should be_nil
+          subject.next_offset_at.should == 2
         end
       end
 
@@ -74,9 +74,9 @@ describe Mongoid::Pagination do
         it 'overfetched by 1' do
           Group.expects(:any_in).once.returns([group])
           subject.size.should == 2
-          Person.has_more_results?.should == true
-          Person.next_offset.should == 2
-          Person.next_offset_at.should == 2
+          subject.has_more_results.should == true
+          subject.next_offset.should == 2
+          subject.next_offset_at.should == 2
         end
       end
     end

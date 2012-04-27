@@ -77,25 +77,18 @@ module Mongoid
       def paginated_collection
         @paginated_collection
       end
-
-      def has_more_results?
-        return unless @paginated_collection
-        @paginated_collection.has_more_results
-      end
-
-      def next_offset_at
-        return unless @paginated_collection
-        @paginated_collection.current_offset + @paginated_collection.current_page_size
-      end
-
-      def next_offset
-        return unless @paginated_collection
-        has_more_results? ? next_offset_at : nil
-      end
     end
 
     class Collection < Array
       attr_accessor :current_offset, :current_page_size, :has_more_results
+
+      def next_offset_at
+        current_offset + current_page_size
+      end
+
+      def next_offset
+        has_more_results ? next_offset_at : nil
+      end
     end
   end
 end
